@@ -271,10 +271,10 @@ layout {
 // This line starts waybar, a commonly used bar for Wayland compositors
 spawn-at-startup "env" "QT_QPA_PLATFORM=wayland" "copyq"
 spawn-at-startup "dunst"
-spawn-at-startup "/home/naruto/.local/bin/wob-daemon"
-spawn-at-startup "/home/naruto/.local/bin/waybar-wrapper"
+spawn-at-startup "sh" "-c" "$HOME/.local/bin/wob-daemon"
+spawn-at-startup "sh" "-c" "$HOME/.local/bin/waybar-wrapper"
 spawn-at-startup "udiskie" "-n"
-spawn-at-startup "swaybg" "-i" "/home/naruto/.cache/current-wallpaper" "-m" "fill"
+spawn-at-startup "sh" "-c" "swaybg -i \"$HOME/.cache/current-wallpaper\" -m fill"
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"
 
@@ -375,9 +375,9 @@ binds {
 
     // Suggested binds for running programs: terminal, app launcher, screen locker.
     Mod+T hotkey-overlay-title="Open a Terminal: ghostty" { spawn "ghostty"; }
-    Mod+D hotkey-overlay-title="Run an Application: fuzzel" { spawn "/home/naruto/.local/bin/fuzzel"; }
-    Mod+Shift+W hotkey-overlay-title="Cycle Wallpaper" { spawn "/home/naruto/.local/bin/wallpaper-cycle"; }
-    Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn "swaylock" "-i" "/home/naruto/.cache/current-wallpaper"; }
+    Mod+D hotkey-overlay-title="Run an Application: fuzzel" { spawn-sh "$HOME/.local/bin/fuzzel"; }
+    Mod+Shift+W hotkey-overlay-title="Cycle Wallpaper" { spawn-sh "$HOME/.local/bin/wallpaper-cycle"; }
+    Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn-sh "swaylock -i \"$HOME/.cache/current-wallpaper\""; }
 
     // Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.
     // Note: the entire command goes as a single argument. It's passed verbatim to `sh -c`.

@@ -42,30 +42,30 @@
         "format-icons": {
             "default": ["", "", ""]
         },
-        "on-click": "/home/naruto/.local/bin/volume-overlay",
-        "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05+ && /home/naruto/.local/bin/volume-overlay",
-        "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05- && /home/naruto/.local/bin/volume-overlay"
+        "on-click": "$HOME/.local/bin/volume-overlay",
+        "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05+ && $HOME/.local/bin/volume-overlay",
+        "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05- && $HOME/.local/bin/volume-overlay"
     },
     "custom/workspaces": {
-        "exec": "/home/naruto/.local/bin/waybar-workspaces",
+        "exec": "$HOME/.local/bin/waybar-workspaces",
         "return-type": "json",
         "interval": 1
     },
     "custom/network": {
-        "exec": "/home/naruto/.local/bin/wifi-menu status",
+        "exec": "$HOME/.local/bin/wifi-menu status",
         "return-type": "json",
         "interval": 2,
         "format": "{text}",
-        "on-click": "/home/naruto/.local/bin/wifi-menu menu"
+        "on-click": "$HOME/.local/bin/wifi-menu menu"
     },
     "custom/bandwidth": {
-        "exec": "/home/naruto/.local/bin/bandwidth",
+        "exec": "$HOME/.local/bin/bandwidth",
         "return-type": "json",
         "interval": 2
     },
     "custom/power": {
         "format": "",
         "tooltip": false,
-        "on-click": "wlogout -l /home/naruto/.config/wlogout/layout -C /home/naruto/.config/wlogout/style.css -b 5 -m 350"
+        "on-click": "wlogout -l $HOME/.config/wlogout/layout -C $HOME/.config/wlogout/style.css -b 5 -m 350"
     }
 }

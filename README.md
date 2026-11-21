@@ -41,7 +41,7 @@ cp -r .config .local ~/
 chmod +x ~/.local/bin/{wob-daemon,waybar-wrapper,fuzzel,wallpaper-cycle,waybar-workspaces,wifi-menu,bandwidth,volume-overlay}
 ```
 
-Review paths before using: several files contain `/home/naruto/...` hardcoded paths.
+Paths use `$HOME` where possible so the config can be reused by other users. Review scripts/config for any remaining machine-specific assumptions before installing.
 
 ## Notes
 

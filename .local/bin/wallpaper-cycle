@@ -6,7 +6,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-HOME = os.environ.get("HOME", "/home/naruto")
+HOME = os.environ.get("HOME", str(Path.home()))
 CACHE_DIR = Path(HOME) / ".cache"
 STATE_FILE = CACHE_DIR / "wallpaper-state"
 WALLPAPER_SYMLINK = CACHE_DIR / "current-wallpaper"
