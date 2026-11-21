@@ -1,0 +1,70 @@
+#!/bin/bash
+FILTERED_DIR="$HOME/.local/share/niri-fuzzel"
+APPS_DIR="$FILTERED_DIR/applications"
+mkdir -p "$APPS_DIR"
+BUILD_LOCK="$FILTERED_DIR/.build-lock"
+
+is_kde_app() {
+  case "$1" in
+    org.kde.dolphin.desktop|org.kde.okular.desktop)
+    return 1 ;;
+    org.kde.*|kcm_*|kcm*|okularApplication*|kde-*|\
+    kaddressbook_*|kmail_*|konsolekalendar*|\
+    kdesystemsettings.desktop|colordkdeiccimporter.desktop|bookmarks.desktop|\
+    kaccess*|kfmclient*|konqbrowser*|kleopatra*|\
+    korganizer*|ktelnetservice*|kwalletmanager*|\
+    systemsettings*|breeze*|calligra*|marble_*|speeddial*)
+    return 0 ;;
+  esac
+  return 1
+}
+
+rebuild_needed() {
+  [ ! -f "$FILTERED_DIR/.stamp" ] && return 0
+  for dir in /usr/share/applications /var/lib/flatpak/exports/share/applications \
+             "$HOME/.local/share/flatpak/exports/share/applications" \
+             "$HOME/.local/share/applications" /usr/local/share/applications; do
+    [ -d "$dir" ] || continue
+    find "$dir" -name '*.desktop' -newer "$FILTERED_DIR/.stamp" -exec false {} + 2>/dev/null && return 0
+  done
+  return 1
+}
+
+get_app_dirs() {
+  echo /usr/share/applications
+  echo /var/lib/flatpak/exports/share/applications
+  echo "$HOME/.local/share/flatpak/exports/share/applications"
+  echo "$HOME/.local/share/applications"
+  echo /usr/local/share/applications
+}
+
+if rebuild_needed; then
+  (
+    flock -n 9 || exit 0
+    rm -f "$APPS_DIR/"*.desktop
+    seen=""
+    get_app_dirs | while read dir; do
+      [ -d "$dir" ] || continue
+      for f in "$dir/"*.desktop; do
+        [ -f "$f" ] || continue
+        name=$(basename "$f")
+        case "$seen" in *"|$name|"*) continue ;; esac
+        seen="$seen|$name|"
+        if is_kde_app "$name"; then
+          printf '%s\nHidden=true\n' '[Desktop Entry]' > "$APPS_DIR/$name"
+        else
+          ln -sf "$f" "$APPS_DIR/$name"
+        fi
+      done
+    done
+    touch "$FILTERED_DIR/.stamp"
+  ) 9>"$BUILD_LOCK"
+fi
+
+FLATPAK_SYS="/var/lib/flatpak/exports/share"
+FLATPAK_USER="$HOME/.local/share/flatpak/exports/share"
+XDG_EXTRA=""
+[ -d "$FLATPAK_SYS" ] && XDG_EXTRA="$FLATPAK_SYS"
+[ -d "$FLATPAK_USER" ] && XDG_EXTRA="${XDG_EXTRA:+$XDG_EXTRA:}$FLATPAK_USER"
+export XDG_DATA_DIRS="${FILTERED_DIR}:${XDG_EXTRA}:/usr/share:/usr/local/share"
+exec /usr/bin/fuzzel "$@"

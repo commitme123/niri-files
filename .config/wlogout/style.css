@@ -1,0 +1,65 @@
+* {
+    background-image: none;
+    font-family: JetBrainsMonoNL Nerd Font, JetBrainsMono Nerd Font, sans-serif;
+}
+
+window {
+    background-color: rgba(21, 19, 17, 0.6);
+}
+
+button {
+    color: #d3d3c7;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-style: none;
+    border-width: 0;
+    border-radius: 10px;
+    margin: 15px;
+    font-size: 48px;
+    min-width: 90px;
+    min-height: 90px;
+    padding: 0;
+}
+
+button:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+}
+
+#lock {
+    background: rgba(97, 120, 132, 0.4);
+}
+
+#lock:hover {
+    background: rgba(97, 120, 132, 0.6);
+}
+
+#shutdown {
+    background: rgba(152, 95, 40, 0.4);
+}
+
+#shutdown:hover {
+    background: rgba(152, 95, 40, 0.6);
+}
+
+#reboot {
+    background: rgba(154, 110, 79, 0.4);
+}
+
+#reboot:hover {
+    background: rgba(154, 110, 79, 0.6);
+}
+
+#suspend {
+    background: rgba(50, 123, 140, 0.4);
+}
+
+#suspend:hover {
+    background: rgba(50, 123, 140, 0.6);
+}
+
+#hibernate {
+    background: rgba(178, 156, 82, 0.4);
+}
+
+#hibernate:hover {
+    background: rgba(178, 156, 82, 0.6);
+}

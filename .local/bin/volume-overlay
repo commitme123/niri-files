@@ -1,0 +1,17 @@
+#!/bin/bash
+PIPE=/tmp/wob-pipe
+[ -p "$PIPE" ] || mkfifo "$PIPE"
+
+vol=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ | sed 's/Volume: //')
+muted=$(echo "$vol" | grep -c MUTED)
+
+if [ "$muted" -gt 0 ]; then
+    echo "0" > "$PIPE" 2>/dev/null
+    exit 0
+fi
+
+pct=$(LC_NUMERIC=C awk "BEGIN { printf \"%.0f\", $vol * 100 }" 2>/dev/null)
+[ -z "$pct" ] && exit 1
+[ "$pct" -gt 100 ] && pct=100
+
+echo "$pct" > "$PIPE" 2>/dev/null

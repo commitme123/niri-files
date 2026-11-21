@@ -1,0 +1,85 @@
+#!/bin/bash
+get_con_name() {
+    nmcli -t -f NAME connection show --active 2>/dev/null | head -1
+}
+
+menu() {
+    connected=$(nmcli -t -f ACTIVE,SSID device wifi 2>/dev/null | grep '^yes' | cut -d: -f2)
+    options=$(nmcli -t -f SSID,SECURITY,BARS device wifi list --rescan no 2>/dev/null | tail -n +2)
+    items=""
+
+    while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        ssid=$(echo "$line" | cut -d: -f1)
+        bars=$(echo "$line" | cut -d: -f3)
+        [ "$ssid" = "--" ] && continue
+        if [ "$ssid" = "$connected" ]; then
+            items+="  $ssid  $bars  ✓\n"
+        else
+            items+="  $ssid  $bars\n"
+        fi
+    done <<< "$options"
+
+    items+="───\n"
+    items+="  Network Settings"
+
+    selected=$(printf "%b" "$items" | fuzzel --dmenu --prompt "Wi-Fi: " --width 65 --lines 20)
+    [ -z "$selected" ] && exit 0
+
+    if echo "$selected" | grep -q "Network Settings"; then
+        settings_action=$(printf "  Rescan networks\n  Enable/Disable WiFi\n  Edit connections\n  Connection info" | fuzzel --dmenu --prompt "Network: " --width 38 --lines 4)
+        case "$settings_action" in
+            *Rescan*) nmcli device wifi rescan 2>/dev/null ;;
+            *Enable*) ghostty -e bash -c 'state=$(nmcli -t radio wifi); if [ "$state" = "enabled" ]; then nmcli radio wifi off 2>&1; else nmcli radio wifi on 2>&1; fi; echo; radio=$(nmcli -t radio wifi); echo "WiFi: $radio"; read -p "Press Enter to close"' ;;
+            *Edit*) ghostty -e wifitui ;;
+            *Info*) ghostty -e bash -c 'nmcli -p connection show --active 2>&1; echo; read -p "Press Enter to close"' ;;
+        esac
+        exit 0
+    fi
+
+    selected_ssid=$(echo "$selected" | sed 's/^  //' | sed 's/  [▂▄▆█_ ]*  ✓$//' | sed 's/  [▂▄▆█_ ]*$//' | sed 's/[[:space:]]*$//')
+
+    if [ "$selected_ssid" = "$connected" ]; then
+        action=$(printf "Disconnect\nForget network\nInfo" | fuzzel --dmenu --prompt "$selected_ssid: " --lines 3 --width 28)
+        case "$action" in
+            Disconnect) ghostty -e bash -c 'con=$(nmcli -t -f NAME,TYPE connection show --active | grep ":802-11-wireless" | cut -d: -f1); nmcli connection down "$con" 2>&1; echo; read -p "Press Enter to close"' ;;
+            "Forget network") ghostty -e bash -c "con=\$(nmcli -t -f NAME connection show | grep -iF \"$selected_ssid\" | head -1); nmcli connection delete \"\$con\" 2>&1; echo; read -p 'Press Enter to close'" ;;
+            Info) ghostty -e bash -c "con=\$(nmcli -t -f NAME connection show | grep -iF \"$selected_ssid\" | head -1); nmcli -p connection show \"\$con\" 2>&1; echo; read -p 'Press Enter to close'" ;;
+        esac
+    else
+        sec=$(nmcli -t -f SSID,SECURITY device wifi list --rescan no 2>/dev/null | grep -F "$selected_ssid" | cut -d: -f2)
+        if [ -z "$sec" ] || [ "$sec" = "--" ]; then
+            ghostty -e bash -c "echo 'Connecting to $selected_ssid...'; nmcli device wifi connect \"$selected_ssid\" 2>&1; echo; read -p 'Press Enter to close'"
+        else
+            pw=$(printf "" | fuzzel --dmenu --password --prompt "Password for $selected_ssid: " --width 45)
+            [ -z "$pw" ] && exit 0
+            scr=$(mktemp)
+            cat > "$scr" << 'SCRIPT'
+#!/bin/bash
+nmcli device wifi connect "$1" password "$2" 2>&1
+echo
+read -p "Press Enter to close"
+SCRIPT
+            chmod +x "$scr"
+            ghostty -e "$scr" "$selected_ssid" "$pw"
+            rm -f "$scr"
+        fi
+    fi
+}
+
+status() {
+    if nmcli -t dev status 2>/dev/null | grep -qiE '^[^:]*:wifi:connected:'; then
+        echo '{"text":"","class":"connected"}'
+    elif nmcli -t -f ACTIVE device wifi 2>/dev/null | grep -q '^yes'; then
+        echo '{"text":"","class":"connected"}'
+    elif nmcli -t connection show --active 2>/dev/null | grep -q ':802-11-wireless:'; then
+        echo '{"text":"","class":"connected"}'
+    else
+        echo '{"text":"","class":"disconnected"}'
+    fi
+}
+
+case "${1:-menu}" in
+    menu) menu ;;
+    status) status ;;
+esac

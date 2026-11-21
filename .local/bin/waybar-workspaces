@@ -1,0 +1,19 @@
+#!/bin/bash
+workspaces=$(timeout 1 niri msg workspaces 2>/dev/null)
+if [ $? -ne 0 ] || [ -z "$workspaces" ]; then
+    echo '{"text": ""}'
+    exit 0
+fi
+
+parts=()
+while IFS= read -r line; do
+    num=$(echo "$line" | sed 's/^[* ]*//')
+    if echo "$line" | grep -q '^\*'; then
+        parts+=("<span foreground='#d3d3c7'><b>$num</b></span>")
+    else
+        parts+=("<span foreground='#93938b'>$num</span>")
+    fi
+done <<< "$(echo "$workspaces" | grep -E '^[ *]' | sed 's/^ *//')"
+
+IFS=' '
+echo "{\"text\":\"${parts[*]}\"}"

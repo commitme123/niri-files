@@ -1,0 +1,6 @@
+# Runtime/state - do not version
+.cache/
+**/current-wallpaper
+**/wallpaper-state
+*.log
+/tmp/

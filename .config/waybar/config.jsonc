@@ -1,0 +1,71 @@
+{
+    "height": 34,
+    "spacing": 4,
+    "modules-left": [
+        "custom/workspaces",
+        "custom/bandwidth"
+    ],
+    "modules-center": [
+        "clock"
+    ],
+    "modules-right": [
+        "cpu",
+        "memory",
+        "disk",
+        "custom/network",
+        "pulseaudio",
+        "custom/power"
+    ],
+    "clock": {
+        "interval": 1,
+        "format": "  {:%a %b %d  %H:%M}",
+        "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>"
+    },
+    "cpu": {
+        "format": "CPU {usage}%",
+        "tooltip": false,
+        "on-click": "ghostty -e htop"
+    },
+    "memory": {
+        "format": "RAM {}%",
+        "on-click": "ghostty -e htop"
+    },
+    "disk": {
+        "format": "DISK {percentage_used}%",
+        "path": "/",
+        "interval": 60,
+        "on-click": "ghostty -e sh -c 'df -h; exec sh'"
+    },
+    "pulseaudio": {
+        "format": "{icon} {volume}%",
+        "format-muted": "",
+        "format-icons": {
+            "default": ["", "", ""]
+        },
+        "on-click": "/home/naruto/.local/bin/volume-overlay",
+        "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05+ && /home/naruto/.local/bin/volume-overlay",
+        "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05- && /home/naruto/.local/bin/volume-overlay"
+    },
+    "custom/workspaces": {
+        "exec": "/home/naruto/.local/bin/waybar-workspaces",
+        "return-type": "json",
+        "interval": 1
+    },
+    "custom/network": {
+        "exec": "/home/naruto/.local/bin/wifi-menu status",
+        "return-type": "json",
+        "interval": 2,
+        "format": "{text}",
+        "on-click": "/home/naruto/.local/bin/wifi-menu menu"
+    },
+    "custom/bandwidth": {
+        "exec": "/home/naruto/.local/bin/bandwidth",
+        "return-type": "json",
+        "interval": 2
+    },
+    "custom/power": {
+        "format": "",
+        "tooltip": false,
+        "on-click": "wlogout -l /home/naruto/.config/wlogout/layout -C /home/naruto/.config/wlogout/style.css -b 5 -m 350"
+    }
+}

@@ -1,0 +1,409 @@
+#!/usr/bin/env python3
+import json
+import os
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+
+HOME = os.environ.get("HOME", "/home/naruto")
+CACHE_DIR = Path(HOME) / ".cache"
+STATE_FILE = CACHE_DIR / "wallpaper-state"
+WALLPAPER_SYMLINK = CACHE_DIR / "current-wallpaper"
+WAL_COLORS = CACHE_DIR / "wal" / "colors.json"
+WAYBAR_STYLE = Path(HOME) / ".config" / "waybar" / "style.css"
+FUZZEL_CONFIG = Path(HOME) / ".config" / "fuzzel" / "fuzzel.ini"
+WLOGOUT_STYLE = Path(HOME) / ".config" / "wlogout" / "style.css"
+WAYBAR_WRAPPER = Path(HOME) / ".local" / "bin" / "waybar-wrapper"
+WAYBAR_WORKSPACES = Path(HOME) / ".local" / "bin" / "waybar-workspaces"
+LOG = Path("/tmp/wallpaper-cycle.log")
+
+WALLPAPER_DIRS = [
+    "/usr/share/backgrounds/archlinux",
+    str(Path(HOME) / "Pictures" / "wallpapers"),
+]
+
+
+def log(msg):
+    with open(LOG, "a") as f:
+        f.write(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}\n")
+
+
+def find_wallpapers():
+    images = []
+    for d in WALLPAPER_DIRS:
+        if not os.path.isdir(d):
+            continue
+        for f in sorted(os.listdir(d)):
+            if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".bmp")):
+                images.append(os.path.join(d, f))
+    return images
+
+
+def get_current_index():
+    if STATE_FILE.exists():
+        try:
+            return int(STATE_FILE.read_text().strip())
+        except (ValueError, OSError):
+            pass
+    return -1
+
+
+def set_current_index(idx):
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    STATE_FILE.write_text(str(idx))
+
+
+def run_wal(image_path):
+    log(f"Running wal on {image_path}")
+    r = subprocess.run(
+        ["wal", "-i", image_path, "-n", "-q"],
+        capture_output=True, text=True, timeout=30,
+    )
+    if r.returncode != 0:
+        log(f"wal stderr: {r.stderr}")
+
+
+def read_wal_colors():
+    if not WAL_COLORS.exists():
+        log("wal colors.json not found")
+        return None
+    return json.loads(WAL_COLORS.read_text())
+
+
+def hex_to_rgba(h, a):
+    h = h.lstrip("#")
+    r = int(h[0:2], 16)
+    g = int(h[2:4], 16)
+    b = int(h[4:6], 16)
+    return f"rgba({r}, {g}, {b}, {a})"
+
+
+def update_swaybg(image_path):
+    log("Updating swaybg")
+    subprocess.run(["pkill", "-x", "swaybg"], capture_output=True, timeout=5)
+    subprocess.Popen(
+        ["swaybg", "-i", image_path, "-m", "fill"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def update_wallpaper_symlink(image_path):
+    if WALLPAPER_SYMLINK.exists() or WALLPAPER_SYMLINK.is_symlink():
+        WALLPAPER_SYMLINK.unlink()
+    WALLPAPER_SYMLINK.symlink_to(image_path)
+    log(f"Symlink -> {image_path}")
+
+
+def apply_waybar_workspaces(colors):
+    fg = colors["special"]["foreground"]
+    c4 = colors["colors"]["color4"]
+    c8 = colors["colors"]["color8"]
+
+    script = f"""#!/bin/bash
+workspaces=$(timeout 1 niri msg workspaces 2>/dev/null)
+if [ $? -ne 0 ] || [ -z "$workspaces" ]; then
+    echo '{{"text": ""}}'
+    exit 0
+fi
+
+parts=()
+while IFS= read -r line; do
+    num=$(echo "$line" | sed 's/^[* ]*//')
+    if echo "$line" | grep -q '^\\*'; then
+        parts+=("<span foreground='{fg}'><b>$num</b></span>")
+    else
+        parts+=("<span foreground='{c8}'>$num</span>")
+    fi
+done <<< "$(echo "$workspaces" | grep -E '^[ *]' | sed 's/^ *//')"
+
+IFS=' '
+echo "{{\\"text\\":\\"${{parts[*]}}\\"}}"
+"""
+    WAYBAR_WORKSPACES.write_text(script)
+    WAYBAR_WORKSPACES.chmod(0o755)
+    log("Applied workspace script colors")
+
+
+def apply_waybar_colors(colors):
+    bg = hex_to_rgba(colors["special"]["background"], "0.6")
+    bg_solid = hex_to_rgba(colors["special"]["background"], "0.9")
+    fg = colors["special"]["foreground"]
+    c0 = hex_to_rgba(colors["colors"]["color0"], "0.5")
+    c1 = hex_to_rgba(colors["colors"]["color1"], "0.25")
+    c2 = hex_to_rgba(colors["colors"]["color2"], "0.25")
+    c3 = hex_to_rgba(colors["colors"]["color3"], "0.25")
+    c4 = hex_to_rgba(colors["colors"]["color4"], "0.25")
+    c5 = hex_to_rgba(colors["colors"]["color5"], "0.25")
+    c4_hover = hex_to_rgba(colors["colors"]["color4"], "0.4")
+    c4_active = hex_to_rgba(colors["colors"]["color4"], "0.3")
+    c0_workspace = hex_to_rgba(colors["colors"]["color0"], "0.4")
+
+    css = f"""* {{
+    border: none;
+    border-radius: 0;
+    font-family: JetBrainsMono Nerd Font, sans-serif;
+    font-size: 13px;
+    min-height: 0;
+}}
+
+window#waybar {{
+    background: {bg};
+    color: {fg};
+}}
+
+#custom-workspaces {{
+    background: {c0_workspace};
+    border-radius: 20px;
+    margin: 4px 0;
+    padding: 2px 12px;
+    font-size: 14px;
+    font-weight: bold;
+}}
+
+#clock,
+#cpu,
+#memory,
+#disk,
+#custom-network,
+#pulseaudio,
+#custom-power {{
+    background: {c0};
+    border-radius: 20px;
+    margin: 4px 0;
+    padding: 2px 12px;
+}}
+
+#cpu {{
+    background: {c1};
+}}
+
+#memory {{
+    background: {c2};
+}}
+
+#disk {{
+    background: {c3};
+}}
+
+#custom-network {{
+    background: {c4};
+}}
+
+#pulseaudio {{
+    background: {c5};
+}}
+
+#custom-power {{
+    background: {bg_solid};
+    padding: 2px 14px;
+}}
+
+#cpu:hover,
+#memory:hover,
+#disk:hover,
+#custom-network:hover,
+#pulseaudio:hover,
+#custom-power:hover {{
+    background: {c4_hover};
+}}
+"""
+    WAYBAR_STYLE.write_text(css)
+    log("Applied waybar colors")
+
+
+def apply_fuzzel_colors(_colors=None):
+    ini = """[main]
+font=JetBrainsMono Nerd Font:size=13
+prompt=  
+filter-desktop=true
+icons-enabled=true
+icon-theme=Adwaita
+lines=10
+width=50
+horizontal-pad=20
+vertical-pad=10
+inner-pad=6
+x-margin=0
+y-margin=0
+anchor=center
+terminal=ghostty
+match-mode=fzf
+sort-result=true
+match-counter=true
+
+[colors]
+background=161616ee
+text=eeeeeeff
+prompt=f5c211ff
+input=eeeeeeff
+match=f5c211ff
+selection=91705766
+selection-text=eeeeeeff
+selection-match=f5c211ff
+placeholder=666666ff
+message=eeeeeeff
+counter=888888ff
+border=91705780
+
+[border]
+width=1
+radius=14
+selection-radius=8
+"""
+    FUZZEL_CONFIG.write_text(ini)
+    log("Applied fuzzel colors")
+
+
+def apply_wlogout_colors(colors):
+    bg = hex_to_rgba(colors["special"]["background"], "0.6")
+    fg = colors["special"]["foreground"]
+    c1 = hex_to_rgba(colors["colors"]["color1"], "0.4")
+    c1_hover = hex_to_rgba(colors["colors"]["color1"], "0.6")
+    c2 = hex_to_rgba(colors["colors"]["color2"], "0.4")
+    c2_hover = hex_to_rgba(colors["colors"]["color2"], "0.6")
+    c3 = hex_to_rgba(colors["colors"]["color3"], "0.4")
+    c3_hover = hex_to_rgba(colors["colors"]["color3"], "0.6")
+    c4 = hex_to_rgba(colors["colors"]["color4"], "0.4")
+    c4_hover = hex_to_rgba(colors["colors"]["color4"], "0.6")
+    c5 = hex_to_rgba(colors["colors"]["color5"], "0.4")
+    c5_hover = hex_to_rgba(colors["colors"]["color5"], "0.6")
+
+    css = f"""* {{
+    background-image: none;
+    font-family: JetBrainsMonoNL Nerd Font, JetBrainsMono Nerd Font, sans-serif;
+}}
+
+window {{
+    background-color: {bg};
+}}
+
+button {{
+    color: {fg};
+    background-color: rgba(255, 255, 255, 0.08);
+    border-style: none;
+    border-width: 0;
+    border-radius: 10px;
+    margin: 15px;
+    font-size: 48px;
+    min-width: 90px;
+    min-height: 90px;
+    padding: 0;
+}}
+
+button:hover {{
+    background-color: rgba(255, 255, 255, 0.25);
+}}
+
+#lock {{
+    background: {c5};
+}}
+
+#lock:hover {{
+    background: {c5_hover};
+}}
+
+#shutdown {{
+    background: {c1};
+}}
+
+#shutdown:hover {{
+    background: {c1_hover};
+}}
+
+#reboot {{
+    background: {c2};
+}}
+
+#reboot:hover {{
+    background: {c2_hover};
+}}
+
+#suspend {{
+    background: {c4};
+}}
+
+#suspend:hover {{
+    background: {c4_hover};
+}}
+
+#hibernate {{
+    background: {c3};
+}}
+
+#hibernate:hover {{
+    background: {c3_hover};
+}}
+"""
+    WLOGOUT_STYLE.write_text(css)
+    log("Applied wlogout colors")
+
+
+GREETER_WALLPAPER = Path("/usr/share/backgrounds/greeter-wallpaper")
+
+
+def update_greeter_wallpaper(image_path):
+    log("Updating greeter wallpaper")
+    try:
+        subprocess.run(
+            ["cp", image_path, str(GREETER_WALLPAPER)],
+            capture_output=True, timeout=10,
+        )
+    except Exception as e:
+        log(f"WARN: Could not update greeter wallpaper: {e}")
+
+
+def restart_waybar():
+    log("Restarting waybar")
+    subprocess.run(["pkill", "-x", "waybar"], capture_output=True, timeout=5)
+    subprocess.run(["pkill", "-x", "waybar-wrapper"], capture_output=True, timeout=5)
+    subprocess.Popen(
+        [str(WAYBAR_WRAPPER)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    log("Waybar restarted")
+
+
+def main():
+    log("===== START =====")
+
+    try:
+        images = find_wallpapers()
+        if not images:
+            log("ERROR: No wallpapers found")
+            sys.exit(1)
+        log(f"Found {len(images)} wallpapers")
+
+        idx = get_current_index()
+        idx = (idx + 1) % len(images)
+        set_current_index(idx)
+        image = images[idx]
+        log(f"Selected: {image}")
+
+        update_wallpaper_symlink(image)
+        run_wal(image)
+
+        colors = read_wal_colors()
+        if colors is None:
+            log("ERROR: Failed to read wal colors")
+            sys.exit(1)
+
+        update_swaybg(image)
+        update_greeter_wallpaper(image)
+        apply_waybar_colors(colors)
+        apply_waybar_workspaces(colors)
+        apply_fuzzel_colors()
+        apply_wlogout_colors(colors)
+
+        restart_waybar()
+        log("===== DONE =====")
+
+    except Exception as e:
+        log(f"ERROR: {e}")
+        raise
+
+
+if __name__ == "__main__":
+    main()

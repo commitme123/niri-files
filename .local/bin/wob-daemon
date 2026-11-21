@@ -1,0 +1,4 @@
+#!/bin/bash
+PIPE=/tmp/wob-pipe
+[ -p "$PIPE" ] || mkfifo "$PIPE"
+tail -f "$PIPE" | wob 2>/dev/null &

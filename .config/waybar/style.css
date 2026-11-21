@@ -1,0 +1,68 @@
+* {
+    border: none;
+    border-radius: 0;
+    font-family: JetBrainsMono Nerd Font, sans-serif;
+    font-size: 13px;
+    min-height: 0;
+}
+
+window#waybar {
+    background: rgba(21, 19, 17, 0.6);
+    color: #d3d3c7;
+}
+
+#custom-workspaces {
+    background: rgba(21, 19, 17, 0.4);
+    border-radius: 20px;
+    margin: 4px 0;
+    padding: 2px 12px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+#clock,
+#cpu,
+#memory,
+#disk,
+#custom-network,
+#pulseaudio,
+#custom-power {
+    background: rgba(21, 19, 17, 0.5);
+    border-radius: 20px;
+    margin: 4px 0;
+    padding: 2px 12px;
+}
+
+#cpu {
+    background: rgba(152, 95, 40, 0.25);
+}
+
+#memory {
+    background: rgba(154, 110, 79, 0.25);
+}
+
+#disk {
+    background: rgba(178, 156, 82, 0.25);
+}
+
+#custom-network {
+    background: rgba(50, 123, 140, 0.25);
+}
+
+#pulseaudio {
+    background: rgba(97, 120, 132, 0.25);
+}
+
+#custom-power {
+    background: rgba(21, 19, 17, 0.9);
+    padding: 2px 14px;
+}
+
+#cpu:hover,
+#memory:hover,
+#disk:hover,
+#custom-network:hover,
+#pulseaudio:hover,
+#custom-power:hover {
+    background: rgba(50, 123, 140, 0.4);
+}

@@ -1,0 +1,30 @@
+{
+    "label" : "lock",
+    "action" : "swaylock -i /usr/share/backgrounds/archlinux/archbtw.png",
+    "text" : "",
+    "keybind" : "l"
+}
+{
+    "label" : "shutdown",
+    "action" : "systemctl poweroff",
+    "text" : "",
+    "keybind" : "s"
+}
+{
+    "label" : "reboot",
+    "action" : "systemctl reboot",
+    "text" : "",
+    "keybind" : "r"
+}
+{
+    "label" : "suspend",
+    "action" : "systemctl suspend",
+    "text" : "",
+    "keybind" : "u"
+}
+{
+    "label" : "hibernate",
+    "action" : "systemctl hibernate",
+    "text" : "",
+    "keybind" : "h"
+}
